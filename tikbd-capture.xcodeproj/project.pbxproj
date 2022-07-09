@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		D127D07E2879AE030054E548 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D127D07D2879AE030054E548 /* main.cpp */; };
+		D127D0862879B2690054E548 /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D127D0842879B2690054E548 /* libSDL2.a */; };
+		D127D0872879B2690054E548 /* libSDL2main.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D127D0852879B2690054E548 /* libSDL2main.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +27,8 @@
 /* Begin PBXFileReference section */
 		D127D07A2879AE030054E548 /* tikbd-capture */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "tikbd-capture"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D127D07D2879AE030054E548 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		D127D0842879B2690054E548 /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = lib/libSDL2.a; sourceTree = "<group>"; };
+		D127D0852879B2690054E548 /* libSDL2main.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2main.a; path = lib/libSDL2main.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +36,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D127D0862879B2690054E548 /* libSDL2.a in Frameworks */,
+				D127D0872879B2690054E548 /* libSDL2main.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,6 +47,8 @@
 		D127D0712879AE030054E548 = {
 			isa = PBXGroup;
 			children = (
+				D127D0842879B2690054E548 /* libSDL2.a */,
+				D127D0852879B2690054E548 /* libSDL2main.a */,
 				D127D07C2879AE030054E548 /* tikbd-capture */,
 				D127D07B2879AE030054E548 /* Products */,
 			);
@@ -238,20 +246,32 @@
 		D127D0822879AE030054E548 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 8347MHLL89;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
 		};
 		D127D0832879AE030054E548 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 8347MHLL89;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
 		};

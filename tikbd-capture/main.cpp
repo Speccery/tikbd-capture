@@ -7,6 +7,10 @@
 
 #include "../include/SDL2/SDL.h"
 #include <iostream>
+#include <map>
+#include "serialport.hpp"
+#include "serialprotocol.h"
+#include <unistd.h>
 
 SDL_Window* window = nullptr;
 int width = 320;
@@ -16,6 +20,86 @@ bool running = true;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *texture = nullptr;
 SDL_Texture *current = nullptr;
+
+int serial_port = -1;
+
+std::map<int, std::string> tikey_to_string =  {
+  { TI_SHIFT, "Shift" },
+  { TI_ALPHA_LOCK, "Alpha Lock" },
+  { TI_CTRL,    "CTRL "},
+  { TI_FCTN,    "FCTN"},
+  { TI_LEFT ,   "Left" },
+  { TI_RIGHT,   "Right" },
+  { TI_UP   ,   "Up" },
+  { TI_DOWN ,   "Down" },
+};
+
+std::map<int,int> sdl_to_tikey = {
+  // arrow keys and convenience keys
+  {SDL_SCANCODE_DOWN,   TI_DOWN },
+  {SDL_SCANCODE_UP,     TI_UP },
+  {SDL_SCANCODE_LEFT,   TI_LEFT },
+  {SDL_SCANCODE_RIGHT,  TI_RIGHT },
+  {SDL_SCANCODE_TAB,    SDL_SCANCODE_TAB },
+  
+  // First row
+  { SDL_SCANCODE_1, '1' },
+  { SDL_SCANCODE_2, '2' },
+  { SDL_SCANCODE_3, '3' },
+  { SDL_SCANCODE_4, '4' },
+  { SDL_SCANCODE_5, '5' },
+  { SDL_SCANCODE_6, '6' },
+  { SDL_SCANCODE_7, '7' },
+  { SDL_SCANCODE_8, '8' },
+  { SDL_SCANCODE_9, '9' },
+  { SDL_SCANCODE_0, '0' },
+  { SDL_SCANCODE_MINUS, '=' },
+  
+  // alphakeys
+  { SDL_SCANCODE_A,     'A'},
+  { SDL_SCANCODE_B,     'B'},
+  { SDL_SCANCODE_C,     'C'},
+  { SDL_SCANCODE_D,     'D'},
+  { SDL_SCANCODE_E,     'E'},
+  { SDL_SCANCODE_F,     'F'},
+  { SDL_SCANCODE_G,     'G'},
+  { SDL_SCANCODE_H,     'H'},
+  { SDL_SCANCODE_I,     'I'},
+  { SDL_SCANCODE_J,     'J'},
+  { SDL_SCANCODE_K,     'K'},
+  { SDL_SCANCODE_L,     'L'},
+  { SDL_SCANCODE_M,     'M'},
+  { SDL_SCANCODE_N,     'N'},
+  { SDL_SCANCODE_O,     'O'},
+  { SDL_SCANCODE_P,     'P'},
+  { SDL_SCANCODE_Q,     'Q'},
+  { SDL_SCANCODE_R,     'R'},
+  { SDL_SCANCODE_S,     'S'},
+  { SDL_SCANCODE_T,     'T'},
+  { SDL_SCANCODE_U,     'U'},
+  { SDL_SCANCODE_V,     'V'},
+  { SDL_SCANCODE_W,     'W'},
+  { SDL_SCANCODE_X,     'X'},
+  { SDL_SCANCODE_Y,     'Y'},
+  { SDL_SCANCODE_Z,     'Z'},
+  // rightmost keys in alpha rows
+  { SDL_SCANCODE_LEFTBRACKET,     '/' }, // keep as is
+  { SDL_SCANCODE_SEMICOLON, ';' },
+  { SDL_SCANCODE_RETURN,    '\n' },
+  
+  // row 4 non alpha keys
+  { SDL_SCANCODE_LSHIFT,  TI_SHIFT },
+  { SDL_SCANCODE_COMMA,   ',' },
+  { SDL_SCANCODE_PERIOD,  '.' },
+  { SDL_SCANCODE_RSHIFT,  TI_SHIFT },
+
+  // bottom row
+  { SDL_SCANCODE_CAPSLOCK,  TI_ALPHA_LOCK },
+  { SDL_SCANCODE_LCTRL,     TI_CTRL },
+  { SDL_SCANCODE_SPACE,     ' '},
+  { SDL_SCANCODE_LALT,      TI_FCTN},
+  { SDL_SCANCODE_RALT,      TI_FCTN},
+};
 
 void handle_event(SDL_Event &event) {
   switch (event.type) {
@@ -98,6 +182,30 @@ void handle_event(SDL_Event &event) {
         dest.h = hh;
         SDL_RenderCopy(renderer, current, nullptr, &dest); // test
         SDL_RenderPresent(renderer);
+
+        int k = event.key.keysym.scancode;
+        auto i = sdl_to_tikey.find(k);
+        if(i != sdl_to_tikey.end()) {
+          // The key we are processing here is a key beloning to the TI keyboard.
+          // The converted keycode is in i->second.
+          // It should be sent to the TI along with the KEYUP or KEYDOWN information.
+          std::string s;
+          auto j = tikey_to_string.find(i->second);
+          if(j != tikey_to_string.end())
+            s = j->second;
+          else
+            s = i->second;
+          std::cout << "SDL " << i->first << " to " << i->second << " " << s << std::endl;
+          
+          // send over serial.
+          if(serial_port != -1) {
+            uint8_t buf[2];
+            buf[0] = event.type == SDL_KEYDOWN ? SERIAL_KEYDOWN : SERIAL_KEYUP;
+            buf[1] = i->second;
+            write(serial_port, buf, sizeof(buf));
+          }
+        }
+
         std::cout << (event.type == SDL_KEYDOWN ? "keydown " : "keyup ") << "scancode: " << event.key.keysym.scancode << std::endl;
       }
       break;
@@ -131,6 +239,12 @@ void handle_event(SDL_Event &event) {
 }
 
 int main(int argc, const char * argv[]) {
+  
+  serial_port = open_serial_port("/dev/cu.usbserial-AH02Z7BM");
+  if(serial_port < 0) {
+    std::cerr << "unable to open serial port." << std::endl;
+    return 1;
+  }
   
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
           std::cerr << "could not initialize SDL2: " << SDL_GetError() << std::endl;
@@ -186,5 +300,7 @@ int main(int argc, const char * argv[]) {
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();
+  
+  close_serial_port(serial_port);
   return 0;
 }

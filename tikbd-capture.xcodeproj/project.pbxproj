@@ -10,6 +10,7 @@
 		D127D07E2879AE030054E548 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D127D07D2879AE030054E548 /* main.cpp */; };
 		D127D0862879B2690054E548 /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D127D0842879B2690054E548 /* libSDL2.a */; };
 		D127D0872879B2690054E548 /* libSDL2main.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D127D0852879B2690054E548 /* libSDL2main.a */; };
+		D194FA5F287AF08700E32DE9 /* serialport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D194FA5D287AF08700E32DE9 /* serialport.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -29,6 +30,9 @@
 		D127D07D2879AE030054E548 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		D127D0842879B2690054E548 /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = lib/libSDL2.a; sourceTree = "<group>"; };
 		D127D0852879B2690054E548 /* libSDL2main.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2main.a; path = lib/libSDL2main.a; sourceTree = "<group>"; };
+		D194FA5D287AF08700E32DE9 /* serialport.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = serialport.cpp; sourceTree = "<group>"; };
+		D194FA5E287AF08700E32DE9 /* serialport.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = serialport.hpp; sourceTree = "<group>"; };
+		D194FA60287AF41A00E32DE9 /* serialprotocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serialprotocol.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +70,9 @@
 			isa = PBXGroup;
 			children = (
 				D127D07D2879AE030054E548 /* main.cpp */,
+				D194FA5D287AF08700E32DE9 /* serialport.cpp */,
+				D194FA5E287AF08700E32DE9 /* serialport.hpp */,
+				D194FA60287AF41A00E32DE9 /* serialprotocol.h */,
 			);
 			path = "tikbd-capture";
 			sourceTree = "<group>";
@@ -127,6 +134,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D194FA5F287AF08700E32DE9 /* serialport.cpp in Sources */,
 				D127D07E2879AE030054E548 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

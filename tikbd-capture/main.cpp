@@ -42,6 +42,9 @@ std::map<int,int> sdl_to_tikey = {
   {SDL_SCANCODE_RIGHT,  TI_RIGHT },
   {SDL_SCANCODE_TAB,    SDL_SCANCODE_TAB },
   
+  // ESC all keys up
+  { SDL_SCANCODE_ESCAPE,   SDL_SCANCODE_ESCAPE },
+  
   // First row
   { SDL_SCANCODE_1, '1' },
   { SDL_SCANCODE_2, '2' },
@@ -85,7 +88,7 @@ std::map<int,int> sdl_to_tikey = {
   // rightmost keys in alpha rows
   { SDL_SCANCODE_LEFTBRACKET,     '/' }, // keep as is
   { SDL_SCANCODE_SEMICOLON, ';' },
-  { SDL_SCANCODE_RETURN,    '\n' },
+  { SDL_SCANCODE_RETURN,    '\r' },
   
   // row 4 non alpha keys
   { SDL_SCANCODE_LSHIFT,  TI_SHIFT },
@@ -200,9 +203,22 @@ void handle_event(SDL_Event &event) {
           // send over serial.
           if(serial_port != -1) {
             uint8_t buf[2];
-            buf[0] = event.type == SDL_KEYDOWN ? SERIAL_KEYDOWN : SERIAL_KEYUP;
-            buf[1] = i->second;
+            if(i->second == SDL_SCANCODE_ESCAPE) {
+              buf[0] = SERIAL_ALLUP;
+              buf[1] = i->second;
+            } else {
+              buf[0] = event.type == SDL_KEYDOWN ? SERIAL_KEYDOWN : SERIAL_KEYUP;
+              buf[1] = i->second;
+            }
             write(serial_port, buf, sizeof(buf));
+
+            // check if we can read something from the serial port.
+            uint8_t rxbuf[40];
+            int rd = read(serial_port, rxbuf, sizeof(rxbuf));
+            if(rd > 0) {
+              // We did receive some data. Anyway let's just throw it away.
+              std::cout << "received: " << rd << " bytes" << std::endl;
+            }
           }
         }
 
@@ -240,7 +256,8 @@ void handle_event(SDL_Event &event) {
 
 int main(int argc, const char * argv[]) {
   
-  serial_port = open_serial_port("/dev/cu.usbserial-AH02Z7BM");
+  // serial_port = open_serial_port("/dev/cu.usbserial-AH02Z7BM");
+  serial_port = open_serial_port("/dev/cu.usbmodem1362403");
   if(serial_port < 0) {
     std::cerr << "unable to open serial port." << std::endl;
     return 1;

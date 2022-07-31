@@ -8,9 +8,18 @@
 #include "../include/SDL2/SDL.h"
 #include <iostream>
 #include <map>
+#include <list>
+#include <string>
 #include "serialport.hpp"
 #include "serialprotocol.h"
 #include <unistd.h>
+#include <dirent.h>
+
+#include "paste.h"
+
+#define SERIAL_DEVICE "/dev/cu.usbmodem1362203"
+// #define SERIAL_DEVICE "/dev/cu.usbserial-AH02Z7BM"
+// #define SERIAL_DEVICE "/dev/cu.usbmodem1362403"
 
 SDL_Window* window = nullptr;
 int width = 320;
@@ -20,6 +29,7 @@ bool running = true;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *texture = nullptr;
 SDL_Texture *current = nullptr;
+bool cmd_down = false;
 
 int serial_port = -1;
 
@@ -41,6 +51,7 @@ std::map<int,int> sdl_to_tikey = {
   {SDL_SCANCODE_LEFT,   TI_LEFT },
   {SDL_SCANCODE_RIGHT,  TI_RIGHT },
   {SDL_SCANCODE_TAB,    SDL_SCANCODE_TAB },
+  {SDL_SCANCODE_BACKSPACE, TI_BACKSPACE },
   
   // ESC all keys up
   { SDL_SCANCODE_ESCAPE,   SDL_SCANCODE_ESCAPE },
@@ -123,9 +134,13 @@ void handle_event(SDL_Event &event) {
       //        blit_input->handle_mouse(SDL_BUTTON_LEFT, event.motion.state & SDL_MOUSEBUTTONDOWN, event.motion.x, event.motion.y);
       // }
       break;
-    case SDL_KEYDOWN: // fall-though
+    case SDL_KEYDOWN:
+      // fall-though
     case SDL_KEYUP:
       {
+        if(event.key.keysym.sym == SDLK_LGUI)
+          cmd_down = (event.type == SDL_KEYDOWN);
+        
         // if (!blit_input->handle_keyboard(event.key.keysym.sym, event.type == SDL_KEYDOWN)) {
         // }
         // https://wiki.libsdl.org/SDL_RenderCopy
@@ -148,6 +163,18 @@ void handle_event(SDL_Event &event) {
           }
           if(++toggler == 3)
             toggler = 0;
+          
+          // Check for PASTE
+          
+          if(event.key.keysym.sym == SDLK_PASTE || (event.key.keysym.sym == SDLK_v && cmd_down)) {
+            char mybuf[200];
+            // Let's try to do paste!
+            int r = get_paste_data(mybuf, sizeof(mybuf));
+            if(r > 0)
+              std::cout << "PASTE(" << r << "): " << mybuf << std::endl;
+            else
+              std::cout << "PASTE returned " << r << std::endl;
+          }
         } else {
           // KEYUP
           SDL_SetRenderDrawColor(renderer, 128, 128, 128,0);
@@ -254,14 +281,48 @@ void handle_event(SDL_Event &event) {
     }
 }
 
+std::list<std::string> devnames;
+
 int main(int argc, const char * argv[]) {
   
-  // serial_port = open_serial_port("/dev/cu.usbserial-AH02Z7BM");
-  serial_port = open_serial_port("/dev/cu.usbmodem1362403");
+  const char *dev = SERIAL_DEVICE;
+  if(argc > 1)
+    dev = argv[1];
+  serial_port = open_serial_port(dev);
   if(serial_port < 0) {
-    std::cerr << "unable to open serial port." << std::endl;
-    return 1;
+    std::cerr << "unable to open serial port:" << dev << std::endl;
+    
+    // Iterate though the directory
+    DIR *dir = opendir("/dev/");
+    const char *devname_prefix ="cu.usbmodem";
+    if(dir) {
+      struct dirent *de = nullptr;
+      while((de = readdir(dir)) != nullptr) {
+        if(strncmp(de->d_name, devname_prefix, strlen(devname_prefix)) == 0) {
+          devnames.push_back(de->d_name);
+          
+        }
+      }
+      closedir(dir);
+      
+      std::cout << "Device list has " << devnames.size() << " entries" << std::endl;
+      for(auto i=devnames.begin(); i!=devnames.end(); i++)
+        std::cout << "Found " << *i << std::endl;
+      
+      // Try first device in the list
+      std::string name = "/dev/" + *devnames.begin();
+      serial_port = open_serial_port(name.c_str());
+      if(serial_port >= 0) {
+        std::cout << "Successfully opened " << name << std::endl;
+      }
+
+    } else {
+      std::cerr << "unable to open directory" << std::endl;
+    }
   }
+  
+  
+
   
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
           std::cerr << "could not initialize SDL2: " << SDL_GetError() << std::endl;

@@ -40,5 +40,7 @@ int open_serial_port(const char *p) {
 }
 
 int close_serial_port(int fd) {
+  if(fd < 0)
+    return -1;
   return close(fd);
 }

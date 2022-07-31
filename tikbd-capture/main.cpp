@@ -31,6 +31,10 @@ SDL_Texture *texture = nullptr;
 SDL_Texture *current = nullptr;
 bool cmd_down = false;
 
+char paste_buf[16384];
+std::list<uint8_t> paste_keys;  // Here are the keypresses to be pasted.
+int original_queue_len = 0;
+
 int serial_port = -1;
 
 std::map<int, std::string> tikey_to_string =  {
@@ -115,8 +119,119 @@ std::map<int,int> sdl_to_tikey = {
   { SDL_SCANCODE_RALT,      TI_FCTN},
 };
 
+void insert_key_up_down(char c) {
+  paste_keys.push_back(SERIAL_KEYDOWN);
+  paste_keys.push_back(c);
+  paste_keys.push_back(SERIAL_KEYUP);
+  paste_keys.push_back(c);
+}
+
+void insert_shifted_key_up_down(char c) {
+  paste_keys.push_back(SERIAL_KEYDOWN);
+  paste_keys.push_back(TI_SHIFT);
+  
+  paste_keys.push_back(SERIAL_KEYDOWN);
+  paste_keys.push_back(c);
+  paste_keys.push_back(SERIAL_KEYUP);
+  paste_keys.push_back(c);
+  
+  paste_keys.push_back(SERIAL_KEYUP);
+  paste_keys.push_back(TI_SHIFT);
+}
+
+void insert_fctn_key_up_down(char c) {
+  paste_keys.push_back(SERIAL_KEYDOWN);
+  paste_keys.push_back(TI_FCTN);
+  
+  paste_keys.push_back(SERIAL_KEYDOWN);
+  paste_keys.push_back(c);
+  paste_keys.push_back(SERIAL_KEYUP);
+  paste_keys.push_back(c);
+  
+  paste_keys.push_back(SERIAL_KEYUP);
+  paste_keys.push_back(TI_FCTN);
+}
+
+
+bool queue_ascii_paste(char c) {
+  if(c >= '0' && c <= '9') {
+    insert_key_up_down(c);
+    return true;
+  }
+  if(c >= 'a' && c <= 'z') {
+    insert_key_up_down(c - ('a' - 'A'));
+    return true;
+  }
+  if(c >= 'A' && c <= 'Z') {
+    insert_shifted_key_up_down(c);
+    return true;
+  }
+  switch(c) {
+    case '.':
+    case ',':
+    case ';':
+    case ' ':
+    case '/':
+    case '=':
+      insert_key_up_down(c);
+      return true;
+    case '<': insert_shifted_key_up_down(','); return true;
+    case '>': insert_shifted_key_up_down('.'); return true;
+    case ':': insert_shifted_key_up_down(';'); return true;
+    case '-': insert_shifted_key_up_down('/'); return true;
+    case '+': insert_shifted_key_up_down('='); return true;
+    case '!': insert_shifted_key_up_down('1'); return true;
+    case '@': insert_shifted_key_up_down('2'); return true;
+    case '#': insert_shifted_key_up_down('3'); return true;
+    case '$': insert_shifted_key_up_down('4'); return true;
+    case '%': insert_shifted_key_up_down('5'); return true;
+    case '^': insert_shifted_key_up_down('6'); return true;
+    case '&': insert_shifted_key_up_down('7'); return true;
+    case '*': insert_shifted_key_up_down('8'); return true;
+    case '(': insert_shifted_key_up_down('9'); return true;
+    case ')': insert_shifted_key_up_down('0'); return true;
+    case '\n': insert_key_up_down('\r'); return true;
+    case '\r': return true;
+    case '_': insert_fctn_key_up_down('U'); return true;
+    case '"': insert_fctn_key_up_down('P'); return true;
+  }
+  return false; // Don't know what to do here.
+}
+
+uint32_t ep_timer_callback(Uint32 interval, void *param) {
+  SDL_Event event;
+  SDL_UserEvent userevent;
+
+  userevent.type = SDL_USEREVENT;
+  userevent.code = 0;
+  userevent.data1 = NULL;
+  userevent.data2 = NULL;
+
+  event.type = SDL_USEREVENT;
+  event.user = userevent;
+  static int count = 0;
+  std::cout << count++ << std::endl;
+
+  SDL_PushEvent(&event);
+  return(interval);
+}
+
+void my_render_copy() {
+  SDL_SetRenderTarget(renderer, nullptr);  // test - render to window
+  int ww = width, hh = height;
+  SDL_GetRendererOutputSize(renderer, &ww, &hh);
+  SDL_Rect dest;
+  dest.x = dest.y = 0;
+  dest.w = ww;
+  dest.h = hh;
+  SDL_RenderCopy(renderer, current, nullptr, &dest); // test
+  SDL_RenderPresent(renderer);
+}
+
 void handle_event(SDL_Event &event) {
   switch (event.type) {
+    case SDL_USEREVENT:
+      break;
     case SDL_QUIT:
       running = false;
       break;
@@ -167,12 +282,15 @@ void handle_event(SDL_Event &event) {
           // Check for PASTE
           
           if(event.key.keysym.sym == SDLK_PASTE || (event.key.keysym.sym == SDLK_v && cmd_down)) {
-            char mybuf[200];
             // Let's try to do paste!
-            int r = get_paste_data(mybuf, sizeof(mybuf));
-            if(r > 0)
-              std::cout << "PASTE(" << r << "): " << mybuf << std::endl;
-            else
+            int r = get_paste_data(paste_buf, sizeof(paste_buf));
+            if(r > 0) {
+              std::cout << "PASTE(" << r << "): " << paste_buf << std::endl;
+              for(char *p = paste_buf; *p && p-paste_buf < sizeof(paste_buf); p++)
+                queue_ascii_paste(*p);
+              original_queue_len = paste_keys.size();
+              std::cout << "Original len: " << original_queue_len << std::endl;
+            } else
               std::cout << "PASTE returned " << r << std::endl;
           }
         } else {
@@ -204,14 +322,10 @@ void handle_event(SDL_Event &event) {
         SDL_SetRenderDrawColor(renderer, 0, 128, 0, 0);
         SDL_RenderClear(renderer);
         
-        int ww = width, hh = height;
-        SDL_GetRendererOutputSize(renderer, &ww, &hh);
-        SDL_Rect dest;
-        dest.x = dest.y = 0;
-        dest.w = ww;
-        dest.h = hh;
-        SDL_RenderCopy(renderer, current, nullptr, &dest); // test
-        SDL_RenderPresent(renderer);
+        my_render_copy();
+        
+        if(cmd_down)
+          break;  // If command key is held down, don't send anything here.
 
         int k = event.key.keysym.scancode;
         auto i = sdl_to_tikey.find(k);
@@ -233,6 +347,7 @@ void handle_event(SDL_Event &event) {
             if(i->second == SDL_SCANCODE_ESCAPE) {
               buf[0] = SERIAL_ALLUP;
               buf[1] = i->second;
+              paste_keys.clear();
             } else {
               buf[0] = event.type == SDL_KEYDOWN ? SERIAL_KEYDOWN : SERIAL_KEYUP;
               buf[1] = i->second;
@@ -324,7 +439,7 @@ int main(int argc, const char * argv[]) {
   
 
   
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
           std::cerr << "could not initialize SDL2: " << SDL_GetError() << std::endl;
           return 1;
   }
@@ -368,11 +483,55 @@ int main(int argc, const char * argv[]) {
   
   SDL_SetWindowMinimumSize(window, width, height);
   
+  SDL_TimerID timer = 0; // SDL_AddTimer(500, ep_timer_callback, nullptr);
+  
   SDL_Event event;
-  while (running && SDL_WaitEvent(&event)) {
-          handle_event(event);
+  Uint64 last_time = 0;
+  
+  while (running) {
+     while(SDL_PollEvent(&event)) { // used to be WaitEvent
+      handle_event(event);
+     }
+    if(!running)
+      break;
+    SDL_Delay(16);
+    Uint64 ticks = SDL_GetTicks64();
+    if(ticks >= last_time+50) {
+      last_time = ticks;
+      // If we are pasting, feed a character to the TI.
+      if(paste_keys.size()) {
+        uint8_t ch[2];
+        ch[0] = paste_keys.front();
+        paste_keys.pop_front();
+        ch[1] = paste_keys.front();
+        paste_keys.pop_front();
+
+        if(serial_port >= 0)
+          write(serial_port, ch, sizeof(ch));
+      }
+      // Render a bar showing how many characters still are pending in the paste list.
+      if(original_queue_len && paste_keys.size()) {
+        int len = paste_keys.size();
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xff);
+        SDL_SetRenderTarget(renderer, current);
+        SDL_RenderClear(renderer);
+        const int max_width = 200;
+        SDL_Rect r = { 0, 0, max_width, 20 };
+        // Erase indicator
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xff);
+        SDL_RenderFillRect(renderer, &r);
+        // Draw indicator
+        r.w = max_width*len/original_queue_len;
+        std::cout << r.w << std::endl;
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0xff, 0xff);
+        SDL_RenderFillRect(renderer, &r);
+        SDL_RenderPresent(renderer);
+      }
+    }
   }
   
+  if(timer)
+    SDL_RemoveTimer(timer);
   SDL_DestroyTexture(texture);
   SDL_DestroyTexture(current);
   SDL_DestroyRenderer(renderer);

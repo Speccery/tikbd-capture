@@ -4,6 +4,7 @@
 //
 //  Created by Erik Piehl on 31.7.2022.
 //
+// Reference: https://github.com/dacap/clip/blob/main/clip_osx.mm
 
 #import <Foundation/Foundation.h>
 #include <AppKit/AppKit.h>

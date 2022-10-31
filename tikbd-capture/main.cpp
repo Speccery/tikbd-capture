@@ -429,11 +429,17 @@ int main(int argc, const char * argv[]) {
       serial_port = open_serial_port(name.c_str());
       if(serial_port >= 0) {
         std::cout << "Successfully opened " << name << std::endl;
+      } else {
+        std::cerr << "Unable to open " << name << std::endl;
+        return 2;
       }
 
     } else {
-      std::cerr << "unable to open directory" << std::endl;
+      std::cerr << "unable to open directory to search serial ports" << std::endl;
+      return 1;
     }
+  } else {
+    std::cout << "Successfully opened " << dev << std::endl;
   }
   
   

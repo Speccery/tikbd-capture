@@ -11,6 +11,7 @@
 		D127D07E2879AE030054E548 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D127D07D2879AE030054E548 /* main.cpp */; };
 		D127D0862879B2690054E548 /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D127D0842879B2690054E548 /* libSDL2.a */; };
 		D127D0872879B2690054E548 /* libSDL2main.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D127D0852879B2690054E548 /* libSDL2main.a */; };
+		D18AEF83290FFF930083B288 /* libSDL2_ttf.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18AEF82290FFF930083B288 /* libSDL2_ttf.a */; };
 		D194FA5F287AF08700E32DE9 /* serialport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D194FA5D287AF08700E32DE9 /* serialport.cpp */; };
 /* End PBXBuildFile section */
 
@@ -33,6 +34,8 @@
 		D127D07D2879AE030054E548 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		D127D0842879B2690054E548 /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = lib/libSDL2.a; sourceTree = "<group>"; };
 		D127D0852879B2690054E548 /* libSDL2main.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2main.a; path = lib/libSDL2main.a; sourceTree = "<group>"; };
+		D18AEF81290FFED20083B288 /* libSDL2_ttf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2_ttf.a; path = lib/libSDL2_ttf.a; sourceTree = "<group>"; };
+		D18AEF82290FFF930083B288 /* libSDL2_ttf.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2_ttf.a; path = lib/libSDL2_ttf.a; sourceTree = "<group>"; };
 		D194FA5D287AF08700E32DE9 /* serialport.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = serialport.cpp; sourceTree = "<group>"; };
 		D194FA5E287AF08700E32DE9 /* serialport.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = serialport.hpp; sourceTree = "<group>"; };
 		D194FA60287AF41A00E32DE9 /* serialprotocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = serialprotocol.h; sourceTree = "<group>"; };
@@ -45,6 +48,7 @@
 			files = (
 				D127D0862879B2690054E548 /* libSDL2.a in Frameworks */,
 				D127D0872879B2690054E548 /* libSDL2main.a in Frameworks */,
+				D18AEF83290FFF930083B288 /* libSDL2_ttf.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -54,10 +58,12 @@
 		D127D0712879AE030054E548 = {
 			isa = PBXGroup;
 			children = (
+				D18AEF82290FFF930083B288 /* libSDL2_ttf.a */,
 				D127D0842879B2690054E548 /* libSDL2.a */,
 				D127D0852879B2690054E548 /* libSDL2main.a */,
 				D127D07C2879AE030054E548 /* tikbd-capture */,
 				D127D07B2879AE030054E548 /* Products */,
+				D18AEF80290FFED20083B288 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -80,6 +86,14 @@
 				D10AA04928965C8C0001911A /* paste.h */,
 			);
 			path = "tikbd-capture";
+			sourceTree = "<group>";
+		};
+		D18AEF80290FFED20083B288 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D18AEF81290FFED20083B288 /* libSDL2_ttf.a */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

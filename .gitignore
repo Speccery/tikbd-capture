@@ -1,2 +1,5 @@
 include
 lib
+Build
+include
+tikbd-capture.xcodeproj/xcuserdata

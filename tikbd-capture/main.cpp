@@ -2,10 +2,14 @@
 //  main.cpp
 //  tikbd-capture
 //
+// An utility capture keyboard presses and send them over to a STM32 NUCLEO board connected to the
+// TI-99/4A retrocomputer's keyboard port.
+//
 //  Created by Erik Piehl on 9.7.2022.
 //
 
 #include "../include/SDL2/SDL.h"
+#include "../include/SDL2/SDL_ttf.h"
 #include <iostream>
 #include <map>
 #include <list>
@@ -29,11 +33,16 @@ bool running = true;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *texture = nullptr;
 SDL_Texture *current = nullptr;
+SDL_Surface *message_surface = nullptr;
+SDL_Texture *message_texture = nullptr;
+SDL_Surface *key_surface = nullptr;
+SDL_Texture *key_texture = nullptr;
 bool cmd_down = false;
+TTF_Font *myfont = nullptr;
 
 char paste_buf[16384];
 std::list<uint8_t> paste_keys;  // Here are the keypresses to be pasted.
-int original_queue_len = 0;
+size_t original_queue_len = 0;
 
 int serial_port = -1;
 
@@ -225,6 +234,21 @@ void my_render_copy() {
   dest.w = ww;
   dest.h = hh;
   SDL_RenderCopy(renderer, current, nullptr, &dest); // test
+  
+  if(message_texture) {
+    SDL_Rect r  = {
+      .x = 0, .y=0, .w = 200, .h = 100
+    };
+    SDL_QueryTexture(message_texture, nullptr, nullptr, &r.w, &r.h);
+    SDL_RenderCopy(renderer, message_texture, nullptr, &r);
+    if(key_texture) {
+      SDL_Rect rk  = {
+        .x = 0, .y=r.h, .w = 200, .h = 100
+      };
+      SDL_QueryTexture(key_texture, nullptr, nullptr, &rk.w, &rk.h);
+      SDL_RenderCopy(renderer, key_texture, nullptr, &rk);
+    }
+  }
   SDL_RenderPresent(renderer);
 }
 
@@ -320,13 +344,14 @@ void handle_event(SDL_Event &event) {
 
         SDL_SetRenderTarget(renderer, nullptr);  // test - render to window
         SDL_SetRenderDrawColor(renderer, 0, 128, 0, 0);
-        SDL_RenderClear(renderer);
-        
-        my_render_copy();
         
         if(cmd_down)
           break;  // If command key is held down, don't send anything here.
 
+        int from_scancode = 0;
+        int to_ti_code = 0;
+        std::string asc;
+        
         int k = event.key.keysym.scancode;
         auto i = sdl_to_tikey.find(k);
         if(i != sdl_to_tikey.end()) {
@@ -339,7 +364,11 @@ void handle_event(SDL_Event &event) {
             s = j->second;
           else
             s = i->second;
-          std::cout << "SDL " << i->first << " to " << i->second << " " << s << std::endl;
+          // std::cout << "SDL " << i->first << " to " << i->second << " " << s << std::endl;
+
+          from_scancode = i->first;
+          to_ti_code = i->second;
+          asc = s;
           
           // send over serial.
           if(serial_port != -1) {
@@ -356,7 +385,7 @@ void handle_event(SDL_Event &event) {
 
             // check if we can read something from the serial port.
             uint8_t rxbuf[40];
-            int rd = read(serial_port, rxbuf, sizeof(rxbuf));
+            size_t rd = read(serial_port, rxbuf, sizeof(rxbuf));
             if(rd > 0) {
               // We did receive some data. Anyway let's just throw it away.
               std::cout << "received: " << rd << " bytes" << std::endl;
@@ -364,7 +393,20 @@ void handle_event(SDL_Event &event) {
           }
         }
 
-        std::cout << (event.type == SDL_KEYDOWN ? "keydown " : "keyup ") << "scancode: " << event.key.keysym.scancode << std::endl;
+        // std::cout << (event.type == SDL_KEYDOWN ? "keydown " : "keyup ") << "scancode: " << event.key.keysym.scancode << std::endl;
+        if(from_scancode) {
+          char n[80];
+          sprintf(n, "SDL %d to %d %c", from_scancode, to_ti_code, asc[0]);
+          
+          SDL_DestroyTexture(key_texture); key_texture = nullptr;
+          SDL_FreeSurface(key_surface); key_surface = nullptr;
+          SDL_Color c = { 240,240,240};
+          key_surface = TTF_RenderText_Solid(myfont, n, c);
+          key_texture = SDL_CreateTextureFromSurface(renderer, key_surface);
+        }
+        SDL_RenderClear(renderer);
+        my_render_copy();
+
       }
       break;
     case SDL_RENDER_TARGETS_RESET:
@@ -401,6 +443,7 @@ std::list<std::string> devnames;
 int main(int argc, const char * argv[]) {
   
   const char *dev = SERIAL_DEVICE;
+  std::string name;
   if(argc > 1)
     dev = argv[1];
   serial_port = open_serial_port(dev);
@@ -420,12 +463,17 @@ int main(int argc, const char * argv[]) {
       }
       closedir(dir);
       
+      if(!devnames.size()) {
+        std::cerr << "Device list empty, no serial port found" << std::endl;
+        return 4;
+      }
       std::cout << "Device list has " << devnames.size() << " entries" << std::endl;
+        
       for(auto i=devnames.begin(); i!=devnames.end(); i++)
         std::cout << "Found " << *i << std::endl;
       
       // Try first device in the list
-      std::string name = "/dev/" + *devnames.begin();
+      name = "/dev/" + *devnames.begin();
       serial_port = open_serial_port(name.c_str());
       if(serial_port >= 0) {
         std::cout << "Successfully opened " << name << std::endl;
@@ -486,7 +534,30 @@ int main(int argc, const char * argv[]) {
   SDL_RenderClear(renderer);
   SDL_RenderPresent(renderer);
   
-  
+  // Display information.
+  //this opens a font style and sets a size
+  // https://stackoverflow.com/questions/22886500/how-to-render-text-in-sdl2
+  // /opt/X11/share/system_fonts/NewYork.ttf
+  TTF_Init();
+  myfont = TTF_OpenFont("/opt/X11/share/system_fonts/NewYork.ttf", 24);
+  if(myfont) {
+    // this is the color in rgb format,
+    // maxing out all would give you the color white,
+    // and it will be your text's color
+    SDL_Color White = {255, 255, 255};
+
+    // as TTF_RenderText_Solid could only be used on
+    // SDL_Surface then you have to create the surface first
+    message_surface = TTF_RenderText_Solid(myfont, name.c_str(), White);
+
+    // now you can convert it into a texture
+    message_texture = SDL_CreateTextureFromSurface(renderer, message_surface);
+  } else {
+    std::cerr << "Unable to open TTF font" << std::endl;
+  }
+
+
+
   SDL_SetWindowMinimumSize(window, width, height);
   
   SDL_TimerID timer = 0; // SDL_AddTimer(500, ep_timer_callback, nullptr);
@@ -517,7 +588,7 @@ int main(int argc, const char * argv[]) {
       }
       // Render a bar showing how many characters still are pending in the paste list.
       if(original_queue_len && paste_keys.size()) {
-        int len = paste_keys.size();
+        size_t len = paste_keys.size();
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xff);
         SDL_SetRenderTarget(renderer, current);
         SDL_RenderClear(renderer);
@@ -527,7 +598,7 @@ int main(int argc, const char * argv[]) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xff);
         SDL_RenderFillRect(renderer, &r);
         // Draw indicator
-        r.w = max_width*len/original_queue_len;
+        r.w = (int)(max_width*len/original_queue_len);
         std::cout << r.w << std::endl;
         SDL_SetRenderDrawColor(renderer, 0, 0, 0xff, 0xff);
         SDL_RenderFillRect(renderer, &r);
@@ -540,6 +611,14 @@ int main(int argc, const char * argv[]) {
     SDL_RemoveTimer(timer);
   SDL_DestroyTexture(texture);
   SDL_DestroyTexture(current);
+  if(message_surface)
+    SDL_FreeSurface(message_surface);
+  if(message_texture)
+    SDL_DestroyTexture(message_texture);
+  if(key_surface)
+    SDL_FreeSurface(key_surface);
+  if(key_texture)
+    SDL_DestroyTexture(key_texture);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();
